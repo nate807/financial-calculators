@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Financial Tools and Calculators</title>
+<style>
+  :root {
+    --brand: #5a9470;
+    --brand-dark: #3d6e52;
+    --brand-faint: #f0f7f3;
+    --brand-faint2: #e1efe7;
+    --text: #1a2e22;
+    --text-muted: #6b8a76;
+    --border: #cde2d6;
+    --white: #ffffff;
+    --shadow: 0 2px 14px rgba(90,148,112,0.09);
+    --shadow-hover: 0 6px 24px rgba(90,148,112,0.18);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { overflow-x: hidden; width: 100%; }
+  body { font-family: Inter, sans-serif; background: var(--brand-faint); color: var(--text); padding: 28px 20px 48px; }
+
+  /* ── Header ── */
+  .hub-header {
+    background: var(--white); border-radius: 20px;
+    box-shadow: var(--shadow); border: 1px solid var(--border);
+    padding: 32px 36px; margin-bottom: 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  }
+  .hub-header-text h1 { font-size: 1.6rem; font-weight: 800; color: var(--brand-dark); line-height: 1.2; margin-bottom: 6px; }
+  .hub-header-text h1 em { font-style: italic; color: var(--brand); }
+  .hub-header-text p { font-size: 0.85rem; color: var(--text-muted); max-width: 480px; line-height: 1.6; }
+  .hub-header-icon { font-size: 3rem; opacity: 0.8; flex-shrink: 0; }
+
+  .tool-count {
+    display: inline-block; margin-top: 10px; padding: 3px 12px;
+    background: var(--brand-faint2); border: 1px solid var(--border);
+    border-radius: 20px; font-size: 0.72rem; font-weight: 700;
+    color: var(--brand-dark); letter-spacing: 0.03em;
+  }
+
+  /* ── Search & filters ── */
+  .controls { margin-bottom: 20px; display: flex; flex-direction: column; gap: 12px; }
+
+  .search-wrap { position: relative; }
+  .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 0.9rem; color: var(--text-muted); pointer-events: none; }
+  .search-input {
+    width: 100%; padding: 10px 14px 10px 36px;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    font-family: Inter, sans-serif; font-size: 0.88rem; color: var(--text);
+    background: var(--white); outline: none; transition: border-color 0.18s, box-shadow 0.18s;
+  }
+  .search-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(90,148,112,0.13); }
+  .search-input::placeholder { color: var(--text-muted); }
+
+  .filter-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .filter-btn {
+    padding: 6px 14px; border: 1.5px solid var(--border); border-radius: 20px;
+    background: var(--white); font-family: Inter, sans-serif;
+    font-size: 0.75rem; font-weight: 600; color: var(--text-muted);
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .filter-btn:hover { border-color: var(--brand); color: var(--brand-dark); }
+  .filter-btn.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+  /* ── No results ── */
+  .no-results { display: none; text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.88rem; }
+  .no-results.visible { display: block; }
+
+  /* ── Calculator grid ── */
+  .calc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  /* ── Calculator card ── */
+  .calc-card {
+    background: var(--white); border-radius: 16px;
+    box-shadow: var(--shadow); border: 1px solid var(--border);
+    padding: 22px; display: flex; flex-direction: column;
+    transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .calc-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); border-color: var(--brand); }
+  .calc-card.hidden { display: none; }
+
+  /* accent bar at top */
+  .calc-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 3px; background: var(--brand); opacity: 0.4; border-radius: 16px 16px 0 0;
+  }
+  .calc-card:hover::before { opacity: 1; }
+
+  .calc-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+  .calc-icon { font-size: 1.8rem; line-height: 1; }
+  .calc-category-tag {
+    padding: 3px 9px; border-radius: 20px; font-size: 0.62rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid var(--border);
+    background: var(--brand-faint2); color: var(--brand-dark);
+  }
+
+  .calc-title { font-size: 0.95rem; font-weight: 700; color: var(--brand-dark); margin-bottom: 6px; line-height: 1.3; }
+  .calc-desc { font-size: 0.78rem; color: var(--text-muted); line-height: 1.6; flex: 1; margin-bottom: 16px; }
+
+  .calc-features { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 16px; }
+  .calc-feature {
+    padding: 2px 8px; border-radius: 20px; font-size: 0.62rem; font-weight: 600;
+    background: var(--brand-faint); border: 1px solid var(--border); color: var(--text-muted);
+  }
+
+  .calc-btn {
+    display: block; width: 100%; padding: 9px 14px;
+    background: var(--brand); border: none; border-radius: 8px;
+    font-family: Inter, sans-serif; font-size: 0.78rem; font-weight: 700;
+    color: #fff; text-align: center; text-decoration: none;
+    cursor: pointer; transition: background 0.15s; letter-spacing: 0.02em;
+  }
+  .calc-btn:hover { background: var(--brand-dark); }
+
+  /* ── Admin note ── */
+  .admin-note {
+    margin-top: 28px; padding: 14px 18px;
+    background: var(--white); border: 1px dashed var(--border);
+    border-radius: 12px; font-size: 0.75rem; color: var(--text-muted); line-height: 1.7;
+  }
+  .admin-note strong { color: var(--brand-dark); }
+</style>
+</head>
+<body>
+
+<!-- ── Hub header ── -->
+<div class="hub-header">
+  <div class="hub-header-text">
+    <h1>Financial Tools and Calculators</h1>
+    <p>Interactive calculators to help you plan, compare, and make confident financial decisions. Select any tool below to get started.</p>
+    <span class="tool-count" id="tool-count">9 Tools Available</span>
+  </div>
+  <div class="hub-header-icon">📊</div>
+</div>
+
+<!-- ── Search & filters ── -->
+<div class="controls">
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input class="search-input" type="text" id="search-input" placeholder="Search calculators...">
+  </div>
+  <div class="filter-row">
+    <button class="filter-btn active" data-filter="all">All Tools</button>
+    <button class="filter-btn" data-filter="savings">Savings & Growth</button>
+    <button class="filter-btn" data-filter="debt">Debt</button>
+    <button class="filter-btn" data-filter="housing">Housing</button>
+    <button class="filter-btn" data-filter="tax">Tax & Benefits</button>
+    <button class="filter-btn" data-filter="insurance">Insurance</button>
+    <button class="filter-btn" data-filter="budgeting">Budgeting</button>
+  </div>
+</div>
+
+<!-- ── No results message ── -->
+<div class="no-results" id="no-results">No calculators match your search. Try a different keyword or category.</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     CALCULATOR CARDS
+     To add a new calculator, copy one .calc-card block below,
+     paste it inside .calc-grid, and update:
+       - data-category  (matches a filter button's data-filter value)
+       - data-keywords  (words the search will match against)
+       - .calc-icon     (any emoji)
+       - .calc-category-tag  (short label shown on the card)
+       - .calc-title
+       - .calc-desc
+       - .calc-features (short feature pills — keep to 3-4)
+       - href on .calc-btn  (replace # with your SuiteDash portal page URL)
+     The tool count in the header updates automatically.
+════════════════════════════════════════════════════════════════ -->
+<div class="calc-grid" id="calc-grid">
+
+  <!-- 1. Compound Interest -->
+  <div class="calc-card" data-category="savings" data-keywords="compound interest growth investment savings returns">
+    <div class="calc-card-top">
+      <div class="calc-icon">📈</div>
+      <span class="calc-category-tag">Savings & Growth</span>
+    </div>
+    <div class="calc-title">Compound Interest Growth</div>
+    <div class="calc-desc">See how your investments grow over time with the power of compounding. Adjust your principal, contributions, rate, and timeframe.</div>
+    <div class="calc-features">
+      <span class="calc-feature">Year-by-year chart</span>
+      <span class="calc-feature">Monthly contributions</span>
+      <span class="calc-feature">Compounding frequency</span>
+    </div>
+    <a class="calc-btn" href="https://portal.christianmoneyhelp.com/portal/dashboard/view/164967" target="_blank">Open Calculator →</a>
+  </div>
+
+  <!-- 2. Loan Payoff -->
+  <div class="calc-card" data-category="debt" data-keywords="loan payoff debt interest balance payment extra principal">
+    <div class="calc-card-top">
+      <div class="calc-icon">🏦</div>
+      <span class="calc-category-tag">Debt</span>
+    </div>
+    <div class="calc-title">Loan Payoff Calculator</div>
+    <div class="calc-desc">Calculate your loan payoff timeline, total interest cost, and see how extra principal payments accelerate your debt freedom date.</div>
+    <div class="calc-features">
+      <span class="calc-feature">Payoff timeline</span>
+      <span class="calc-feature">Extra payment impact</span>
+      <span class="calc-feature">Month-by-month table</span>
+    </div>
+    <a class="calc-btn" href="https://portal.christianmoneyhelp.com/portal/dashboard/view/164992" target="_blank">Open Calculator →</a>
+  </div>
+
+  <!-- 3. Mortgage Affordability -->
+  <div class="calc-card" data-category="housing" data-keywords="mortgage affordability home price income debt DTI how much can I borrow">
+    <div class="calc-card-top">
+      <div class="calc-icon">🏡</div>
+      <span class="calc-category-tag">Housing</span>
+    </div>
+    <div class="calc-title">Home Affordability</div>
+    <div class="calc-desc">Find out how much home you can safely afford based on your income and debts — or check whether a specific home fits your budget.</div>
+    <div class="calc-features">
+      <span class="calc-feature">Afford vs. check modes</span>
+      <span class="calc-feature">DTI analysis</span>
+      <span class="calc-feature">PMI warning</span>
+    </div>
+    <a class="calc-btn" href="https://portal.christianmoneyhelp.com/portal/dashboard/view/165014" target="_blank">Open Calculator →</a>
+  </div>
+
+  <!-- 4. Mortgage Payment -->
+  <div class="calc-card" data-category="housing" data-keywords="mortgage payment monthly principal interest amortization points rate">
+    <div class="calc-card-top">
+      <div class="calc-icon">🏠</div>
+      <span class="calc-category-tag">Housing</span>
+    </div>
+    <div class="calc-title">Mortgage Payment Calculator</div>
+    <div class="calc-desc">Calculate your monthly payment and explore the full cost of your mortgage — including term comparison, rate sensitivity, and points analysis.</div>
+    <div class="calc-features">
+      <span class="calc-feature">Term comparison</span>
+      <span class="calc-feature">Rate sensitivity table</span>
+      <span class="calc-feature">Points calculator</span>
+    </div>
+    <a class="calc-btn" href="https://portal.christianmoneyhelp.com/portal/dashboard/view/165107" target="_blank">Open Calculator →</a>
+  </div>
+
+  <!-- 5. Ministerial Housing Allowance -->
+  <div class="calc-card" data-category="tax" data-keywords="ministerial housing allowance minister clergy IRS SE tax income exclusion church">
+    <div class="calc-card-top">
+      <div class="calc-icon">⛪</div>
+      <span class="calc-category-tag">Tax & Benefits</span>
+    </div>
+    <div class="calc-title">Ministerial Housing Allowance</div>
+    <div class="calc-desc">Calculate your IRS-excludable housing allowance and estimate your income tax savings. Covers the three-value comparison and self-employment tax impact.</div>
+    <div class="calc-features">
+      <span class="calc-feature">3-value IRS comparison</span>
+      <span class="calc-feature">SE vs. W-2 toggle</span>
+      <span class="calc-feature">Tax savings estimate</span>
+    </div>
+    <a class="calc-btn" href="https://portal.christianmoneyhelp.com/portal/dashboard/view/165032" target="_blank">Open Calculator →</a>
+  </div>
+
+  <!-- 6. Debt Elimination -->
+  <div class="calc-card" data-category="debt" data-keywords="debt snowball avalanche elimination credit card payoff student loan auto freedom">
+    <div class="calc-card-top">
+      <div class="calc-icon">❄️</div>
+      <span class="calc-category-tag">Debt</span>
+    </div>
+    <div class="calc-title">Debt Elimination Calculator</div>
+    <div class="calc-desc">Map your path to debt freedom using the snowball or avalanche method. Add all your debts and see your payoff order and debt-free date.</div>
+    <div class="calc-features">
+      <span class="calc-feature">Snowball & avalanche</span>
+      <span class="calc-feature">Debt-free date</span>
+      <span class="calc-feature">Payoff timeline chart</span>
+    </div>
+    <a class="calc-btn" href="https://portal.christianmoneyhelp.com/portal/dashboard/view/165567" target="_blank">Open Calculator →</a>
+  </div>
+
+  <!-- 7. Health Insurance Optimizer -->
+  <div class="calc-card" data-category="insurance" data-keywords="health insurance plan compare HDHP PPO deductible premium HSA out of pocket">
+    <div class="calc-card-top">
+      <div class="calc-icon">🏥</div>
+      <span class="calc-category-tag">Insurance</span>
+    </div>
+    <div class="calc-title">Health Insurance Plan Optimizer</div>
+    <div class="calc-desc">Compare multiple health insurance plans side by side and get a recommended plan based on your income, family size, and expected healthcare usage.</div>
+    <div class="calc-features">
+      <span class="calc-feature">Multi-plan comparison</span>
+      <span class="calc-feature">HSA tax savings</span>
+      <span class="calc-feature">Low/medium/high use</span>
+    </div>
+    <a class="calc-btn" href="https://portal.christianmoneyhelp.com/portal/dashboard/view/165067" target="_blank">Open Calculator →</a>
+  </div>
+
+  <!-- 8. Envelope Budget Reconciliation -->
+  <div class="calc-card" data-category="budgeting" data-keywords="envelope budget reconcile live give owe grow sinking fund balance savings">
+    <div class="calc-card-top">
+      <div class="calc-icon">📬</div>
+      <span class="calc-category-tag">Budgeting</span>
+    </div>
+    <div class="calc-title">Envelope Budget Reconciliation</div>
+    <div class="calc-desc">Reconcile your checking and savings balances against your envelope budget. See exactly where your money should be right now and identify any gaps.</div>
+    <div class="calc-features">
+      <span class="calc-feature">Live / Give / Owe / Grow</span>
+      <span class="calc-feature">Sinking fund targets</span>
+      <span class="calc-feature">Surplus & deficit alert</span>
+    </div>
+    <a class="calc-btn" href="https://portal.christianmoneyhelp.com/portal/dashboard/view/165168" target="_blank">Open Calculator →</a>
+  </div>
+
+  <!-- 9. Mortgage Affordability (placeholder for next tool) -->
+  <!-- ═══════════════════════════════════════════════════════
+       ADD NEW CALCULATOR CARDS ABOVE THIS LINE
+       Copy any .calc-card block, paste it here, and update
+       the fields described in the comment above the grid.
+  ═══════════════════════════════════════════════════════ -->
+
+</div><!-- /calc-grid -->
+
+<script>
+  var searchInput  = document.getElementById('search-input');
+  var filterBtns   = document.querySelectorAll('.filter-btn');
+  var cards        = document.querySelectorAll('.calc-card');
+  var noResults    = document.getElementById('no-results');
+  var toolCountEl  = document.getElementById('tool-count');
+  var activeFilter = 'all';
+
+  // update tool count on load
+  toolCountEl.textContent = cards.length + ' Tool' + (cards.length !== 1 ? 's' : '') + ' Available';
+
+  function filterCards() {
+    var query = searchInput.value.toLowerCase().trim();
+    var visible = 0;
+
+    for (var i = 0; i < cards.length; i++) {
+      var card     = cards[i];
+      var category = card.getAttribute('data-category') || '';
+      var keywords = (card.getAttribute('data-keywords') || '').toLowerCase();
+      var title    = (card.querySelector('.calc-title') ? card.querySelector('.calc-title').textContent : '').toLowerCase();
+      var desc     = (card.querySelector('.calc-desc')  ? card.querySelector('.calc-desc').textContent  : '').toLowerCase();
+      var searchable = keywords + ' ' + title + ' ' + desc;
+
+      var matchesFilter = (activeFilter === 'all' || category === activeFilter);
+      var matchesSearch = (query === '' || searchable.indexOf(query) > -1);
+
+      if (matchesFilter && matchesSearch) {
+        card.classList.remove('hidden');
+        visible++;
+      } else {
+        card.classList.add('hidden');
+      }
+    }
+
+    noResults.className = visible === 0 ? 'no-results visible' : 'no-results';
+  }
+
+  // filter buttons
+  for (var i = 0; i < filterBtns.length; i++) {
+    (function(btn) {
+      btn.addEventListener('click', function() {
+        for (var j = 0; j < filterBtns.length; j++) filterBtns[j].classList.remove('active');
+        btn.classList.add('active');
+        activeFilter = btn.getAttribute('data-filter');
+        filterCards();
+      });
+    })(filterBtns[i]);
+  }
+
+  // search
+  searchInput.addEventListener('input', function() { filterCards(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Health Insurance Plan Optimizer</title>
+<style>
+  :root {
+    --brand: #5a9470;
+    --brand-dark: #3d6e52;
+    --brand-faint: #f0f7f3;
+    --brand-faint2: #e1efe7;
+    --text: #1a2e22;
+    --text-muted: #6b8a76;
+    --border: #cde2d6;
+    --white: #ffffff;
+    --shadow: 0 2px 14px rgba(90,148,112,0.09);
+    --warn-bg: #fff8f0;
+    --warn-border: #f0c090;
+    --warn-text: #7a4010;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { overflow-x: hidden; width: 100%; }
+  body { font-family: Poppins, sans-serif; background: var(--brand-faint); color: var(--text); padding: 20px 16px 36px; }
+
+  .page-header { margin-bottom: 18px; }
+  .page-header h1 { font-size: 1.5rem; font-weight: 700; color: var(--brand-dark); line-height: 1.2; margin-bottom: 3px; }
+  .page-header h1 em { font-style: italic; color: var(--brand); }
+  .page-header p { font-size: 0.85rem; color: var(--text-muted); }
+
+  /* ── Situation card ── */
+  .card { background: var(--white); border-radius: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 16px; padding: 22px; }
+  .card-title { font-size: 0.85rem; font-weight: 700; color: var(--brand-dark); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+  .card-subtitle { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--brand-faint2); }
+
+  .sit-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 20px; }
+  .sit-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
+
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .input-row { display: flex; align-items: center; gap: 6px; }
+  .prefix { font-size: 0.88rem; font-weight: 600; color: var(--brand); min-width: 11px; }
+
+  input[type="number"] {
+    width: 100%; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-family: Poppins, sans-serif; font-size: 0.85rem; font-weight: 500;
+    color: var(--text); background: var(--brand-faint); outline: none;
+    transition: border-color 0.18s, box-shadow 0.18s; -moz-appearance: textfield;
+  }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  input[type="number"]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(90,148,112,0.13); background: #fff; }
+
+  select {
+    width: 100%; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-family: Poppins, sans-serif; font-size: 0.85rem; font-weight: 500;
+    color: var(--text); background: var(--brand-faint); outline: none; cursor: pointer;
+  }
+  select:focus { border-color: var(--brand); }
+
+  /* toggle buttons */
+  .toggle-group { display: grid; gap: 6px; }
+  .toggle-group-2 { grid-template-columns: 1fr 1fr; }
+  .toggle-group-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .toggle-btn {
+    padding: 7px 6px; border: 1.5px solid var(--border); border-radius: 8px;
+    background: var(--brand-faint); font-family: Poppins, sans-serif;
+    font-size: 0.73rem; font-weight: 600; color: var(--text-muted);
+    cursor: pointer; text-align: center; transition: all 0.16s;
+  }
+  .toggle-btn:hover { border-color: var(--brand); color: var(--brand-dark); }
+  .toggle-btn.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+  /* ── Plan cards ── */
+  .plan-card {
+    background: var(--white); border-radius: 16px; box-shadow: var(--shadow);
+    border: 1px solid var(--border); margin-bottom: 12px; overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .plan-card.winner { border-color: var(--brand); border-width: 2px; }
+
+  .plan-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; background: var(--brand-faint);
+    border-bottom: 1px solid var(--brand-faint2);
+  }
+  .plan-card-header-left { display: flex; align-items: center; gap: 10px; }
+  .plan-color-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .plan-name-input {
+    border: none; background: transparent; font-family: Poppins, sans-serif;
+    font-size: 0.9rem; font-weight: 700; color: var(--brand-dark);
+    outline: none; width: 160px;
+  }
+  .plan-name-input:focus { border-bottom: 1px solid var(--brand); }
+  .plan-header-right { display: flex; align-items: center; gap: 10px; }
+  .winner-badge {
+    display: none; padding: 3px 10px; background: var(--brand); border-radius: 20px;
+    font-size: 0.68rem; font-weight: 700; color: #fff; letter-spacing: 0.03em;
+  }
+  .winner-badge.visible { display: inline-block; }
+  .btn-remove-plan {
+    padding: 3px 8px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--white); font-family: Poppins, sans-serif;
+    font-size: 0.72rem; color: #c08080; cursor: pointer;
+  }
+  .btn-remove-plan:hover { background: #fff0f0; border-color: #f0b0b0; }
+
+  .plan-card-body { padding: 18px 20px; }
+
+  /* plan fields grid */
+  .plan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 16px; }
+  .plan-section-label {
+    grid-column: 1 / -1; font-size: 0.68rem; font-weight: 700; color: var(--brand);
+    text-transform: uppercase; letter-spacing: 0.07em;
+    padding-top: 10px; margin-top: 2px; border-top: 1px dashed var(--border);
+  }
+  .plan-section-label:first-child { padding-top: 0; margin-top: 0; border-top: none; }
+
+  .hsa-row { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding-top: 6px; }
+  .hsa-toggle { display: flex; gap: 6px; }
+  .hsa-btn {
+    padding: 5px 12px; border: 1.5px solid var(--border); border-radius: 6px;
+    background: var(--brand-faint); font-family: Poppins, sans-serif;
+    font-size: 0.72rem; font-weight: 600; color: var(--text-muted);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .hsa-btn:hover { border-color: var(--brand); color: var(--brand-dark); }
+  .hsa-btn.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .hsa-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* plan total row */
+  .plan-total-row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 14px; padding-top: 12px; border-top: 2px solid var(--brand-faint2);
+    flex-wrap: wrap; gap: 8px;
+  }
+  .plan-total-scenarios { display: flex; gap: 16px; }
+  .scenario-item { text-align: center; }
+  .scenario-label { font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 2px; }
+  .scenario-value { font-size: 0.95rem; font-weight: 700; color: var(--brand-dark); }
+  .scenario-value.best { color: var(--brand); }
+
+  /* ── Add plan button ── */
+  .btn-add-plan {
+    width: 100%; padding: 12px; border: 2px dashed var(--border); border-radius: 16px;
+    background: transparent; font-family: Poppins, sans-serif;
+    font-size: 0.82rem; font-weight: 600; color: var(--text-muted);
+    cursor: pointer; margin-bottom: 16px; transition: all 0.15s;
+  }
+  .btn-add-plan:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-faint); }
+
+  /* ── Recommendation card ── */
+  .rec-card {
+    background: var(--white); border-radius: 16px; box-shadow: var(--shadow);
+    border: 2px solid var(--brand); margin-bottom: 16px; overflow: hidden;
+  }
+  .rec-header {
+    background: var(--brand); padding: 14px 20px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .rec-header h2 { font-size: 0.9rem; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 0.04em; }
+  .rec-body { padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .rec-left { padding-right: 20px; border-right: 1px solid var(--brand-faint2); }
+  .rec-right { padding-left: 20px; }
+  .rec-plan-name { font-size: 1.3rem; font-weight: 700; color: var(--brand); margin-bottom: 6px; }
+  .rec-reason { font-size: 0.82rem; color: var(--text); line-height: 1.6; }
+  .rec-reason strong { color: var(--brand-dark); }
+
+  .rec-stats { display: flex; flex-direction: column; gap: 0; }
+  .rec-stat { padding: 10px 0; border-bottom: 1px solid var(--brand-faint2); }
+  .rec-stat:last-child { border-bottom: none; }
+  .rec-stat-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); margin-bottom: 2px; }
+  .rec-stat-value { font-size: 1.2rem; font-weight: 700; color: var(--brand-dark); }
+  .rec-stat-value.green { color: var(--brand); }
+
+  /* ── Comparison table ── */
+  .full-card { background: var(--white); border-radius: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 16px; padding: 20px; }
+  .full-card:last-child { margin-bottom: 0; }
+  .section-title { font-size: 0.9rem; font-weight: 700; color: var(--brand-dark); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 14px; }
+
+  .comp-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  .comp-table th { padding: 8px 12px; text-align: right; font-size: 0.7rem; font-weight: 700; color: var(--brand-dark); text-transform: uppercase; letter-spacing: 0.04em; background: var(--brand-faint2); border-bottom: 1px solid var(--border); }
+  .comp-table th:first-child { text-align: left; }
+  .comp-table td { padding: 8px 12px; text-align: right; border-bottom: 1px solid var(--brand-faint2); color: var(--text); }
+  .comp-table td:first-child { text-align: left; font-weight: 600; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  .comp-table tr:last-child td { border-bottom: none; }
+  .comp-table td.best { color: var(--brand); font-weight: 700; }
+  .comp-table tr.total-row td { font-weight: 700; color: var(--brand-dark); background: var(--brand-faint); }
+
+  /* chart */
+  .legend { display: flex; gap: 10px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.7rem; color: var(--text-muted); font-weight: 500; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+  .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .chart-header h2 { font-size: 0.9rem; font-weight: 700; color: var(--brand-dark); text-transform: uppercase; letter-spacing: 0.04em; }
+  .chart-wrap { position: relative; height: 260px; width: 100%; }
+
+  .notice { display: none; padding: 8px 14px; background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: 8px; font-size: 0.77rem; color: var(--warn-text); margin-bottom: 12px; }
+  .notice.visible { display: block; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Health Insurance Plan Optimizer</h1>
+  <p>Compare your plan options side by side and find the best fit for your situation.</p>
+</div>
+
+<!-- ── Situation Card ── -->
+<div class="card">
+  <div class="card-title">Your Situation</div>
+  <div class="card-subtitle">Tell us about your coverage needs and expected healthcare usage.</div>
+
+  <div class="sit-grid">
+    <div class="field">
+      <div class="field-label">Coverage Type</div>
+      <div class="toggle-group toggle-group-2" id="toggle-coverage">
+        <button class="toggle-btn active" data-val="individual">Individual</button>
+        <button class="toggle-btn" data-val="family">Family</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-label">Expected Utilization</div>
+      <div class="toggle-group toggle-group-3" id="toggle-util">
+        <button class="toggle-btn active" data-val="low">Low</button>
+        <button class="toggle-btn" data-val="medium">Medium</button>
+        <button class="toggle-btn" data-val="high">High</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-label">Federal Tax Bracket</div>
+      <select id="sel-bracket">
+        <option value="0.10">10%</option>
+        <option value="0.12">12%</option>
+        <option value="0.22" selected>22%</option>
+        <option value="0.24">24%</option>
+        <option value="0.32">32%</option>
+        <option value="0.35">35%</option>
+        <option value="0.37">37%</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="sit-grid-2">
+    <div class="field">
+      <div class="field-label">Prior Year Medical Expenses</div>
+      <div class="input-row"><span class="prefix">$</span><input type="number" id="sit-medical" value="1200" min="0" step="100"></div>
+    </div>
+    <div class="field">
+      <div class="field-label">Prior Year Prescription Costs</div>
+      <div class="input-row"><span class="prefix">$</span><input type="number" id="sit-rx" value="400" min="0" step="100"></div>
+    </div>
+    <div class="field">
+      <div class="field-label">Expected Doctor Visits / Year</div>
+      <div class="input-row"><span class="prefix">#</span><input type="number" id="sit-visits" value="4" min="0" step="1"></div>
+    </div>
+    <div class="field">
+      <div class="field-label">Any Planned Major Expenses?</div>
+      <div class="toggle-group toggle-group-2" id="toggle-major">
+        <button class="toggle-btn active" data-val="no">No</button>
+        <button class="toggle-btn" data-val="yes">Yes (surgery/pregnancy)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Plan Cards container ── -->
+<div id="plans-container"></div>
+
+<!-- ── Add Plan button ── -->
+<button class="btn-add-plan" id="btn-add-plan">+ Add Another Plan to Compare</button>
+
+<!-- ── Notice ── -->
+<div class="notice" id="notice-plans">Add at least two plans to see a recommendation.</div>
+
+<!-- ── Recommendation ── -->
+<div class="rec-card" id="rec-card" style="display:none">
+  <div class="rec-header">
+    <h2>⭐ Recommended Plan</h2>
+  </div>
+  <div class="rec-body">
+    <div class="rec-left">
+      <div class="rec-plan-name" id="rec-name">—</div>
+      <div class="rec-reason" id="rec-reason">—</div>
+    </div>
+    <div class="rec-right">
+      <div class="rec-stats">
+        <div class="rec-stat">
+          <div class="rec-stat-label">Est. Annual Premium</div>
+          <div class="rec-stat-value" id="rec-premium">—</div>
+        </div>
+        <div class="rec-stat">
+          <div class="rec-stat-label">Est. Out-of-Pocket</div>
+          <div class="rec-stat-value" id="rec-oop">—</div>
+        </div>
+        <div class="rec-stat">
+          <div class="rec-stat-label">HSA Tax Savings</div>
+          <div class="rec-stat-value green" id="rec-hsa">—</div>
+        </div>
+        <div class="rec-stat">
+          <div class="rec-stat-label">Est. Total Annual Cost</div>
+          <div class="rec-stat-value green" id="rec-total">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Comparison Table ── -->
+<div class="full-card" id="comp-section" style="display:none">
+  <div class="section-title">Full Plan Comparison</div>
+  <div style="overflow-x:auto">
+    <table class="comp-table" id="comp-table"></table>
+  </div>
+</div>
+
+<!-- ── Chart ── -->
+<div class="full-card" id="chart-section" style="display:none">
+  <div class="chart-header">
+    <h2>Estimated Total Annual Cost by Scenario</h2>
+    <div class="legend" id="chart-legend"></div>
+  </div>
+  <div class="chart-wrap"><canvas id="planChart"></canvas></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+  // ── State ──────────────────────────────────────────────────────────────────
+  var coverage  = 'individual';
+  var utilLevel = 'low';
+  var majorExp  = 'no';
+  var planCount = 0;
+  var plans     = []; // array of plan ids
+
+  var PLAN_COLORS = ['#5a9470','#4a7fb5','#c8884a','#9b6ab5','#b5826a'];
+
+  var fmt = function(n) { return '$' + Math.round(Math.abs(n)).toLocaleString('en-US'); };
+
+  // ── Chart ──────────────────────────────────────────────────────────────────
+  var ctx = document.getElementById('planChart').getContext('2d');
+  var chart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: ['Low Use', 'Medium Use', 'High Use'], datasets: [] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 320 },
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: '#1a2e22', padding: 10, cornerRadius: 8,
+          callbacks: { label: function(c) { return ' ' + c.dataset.label + ': ' + fmt(c.raw); } }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#6b8a76', font: { size: 10 } } },
+        y: { grid: { color: '#f0f7f3' }, border: { display: false },
+          ticks: { color: '#6b8a76', font: { size: 10 },
+            callback: function(v) { return v >= 1e3 ? '$'+(v/1e3).toFixed(0)+'K' : '$'+v; }
+          }
+        }
+      }
+    }
+  });
+
+  // ── Add plan ───────────────────────────────────────────────────────────────
+  function addPlan(defaults) {
+    planCount++;
+    var id = planCount;
+    plans.push(id);
+    var color = PLAN_COLORS[(id - 1) % PLAN_COLORS.length];
+    var d = defaults || {};
+
+    var html =
+      '<div class="plan-card" id="plan-card-' + id + '">' +
+        '<div class="plan-card-header">' +
+          '<div class="plan-card-header-left">' +
+            '<div class="plan-color-dot" style="background:' + color + '"></div>' +
+            '<input class="plan-name-input" id="pname-' + id + '" type="text" value="' + (d.name || 'Plan ' + id) + '">' +
+          '</div>' +
+          '<div class="plan-header-right">' +
+            '<span class="winner-badge" id="badge-' + id + '">⭐ Best Value</span>' +
+            '<button class="btn-remove-plan" onclick="removePlan(' + id + ')">Remove</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="plan-card-body">' +
+          '<div class="plan-grid">' +
+
+            '<div class="plan-section-label">Premiums</div>' +
+            '<div class="field"><div class="field-label">Monthly Premium</div><div class="input-row"><span class="prefix">$</span><input type="number" id="prem-' + id + '" value="' + (d.prem || 0) + '" min="0" step="10"></div></div>' +
+            '<div class="field"><div class="field-label">Employer Contribution/Mo</div><div class="input-row"><span class="prefix">$</span><input type="number" id="pempl-' + id + '" value="' + (d.empl || 0) + '" min="0" step="10"></div></div>' +
+            '<div class="field"><div class="field-label">HSA Employer Contribution</div><div class="input-row"><span class="prefix">$</span><input type="number" id="phsaempl-' + id + '" value="' + (d.hsaempl || 0) + '" min="0" step="100"></div></div>' +
+
+            '<div class="plan-section-label">Deductible &amp; Out-of-Pocket</div>' +
+            '<div class="field"><div class="field-label">Individual Deductible</div><div class="input-row"><span class="prefix">$</span><input type="number" id="pded-ind-' + id + '" value="' + (d.dedInd || 0) + '" min="0" step="100"></div></div>' +
+            '<div class="field"><div class="field-label">Family Deductible</div><div class="input-row"><span class="prefix">$</span><input type="number" id="pded-fam-' + id + '" value="' + (d.dedFam || 0) + '" min="0" step="100"></div></div>' +
+            '<div class="field"><div class="field-label">Coinsurance After Deductible</div><div class="input-row"><span class="prefix">%</span><input type="number" id="pcoins-' + id + '" value="' + (d.coins || 20) + '" min="0" max="100" step="5"></div></div>' +
+            '<div class="field"><div class="field-label">Individual Max Out-of-Pocket</div><div class="input-row"><span class="prefix">$</span><input type="number" id="pmoop-ind-' + id + '" value="' + (d.moopInd || 0) + '" min="0" step="100"></div></div>' +
+            '<div class="field"><div class="field-label">Family Max Out-of-Pocket</div><div class="input-row"><span class="prefix">$</span><input type="number" id="pmoop-fam-' + id + '" value="' + (d.moopFam || 0) + '" min="0" step="100"></div></div>' +
+            '<div class="field"><div class="field-label">HSA Eligible?</div>' +
+              '<div class="hsa-toggle">' +
+                '<button class="hsa-btn' + (d.hsa ? ' active' : '') + '" id="hsa-yes-' + id + '" onclick="setHSA(' + id + ', true)">Yes</button>' +
+                '<button class="hsa-btn' + (!d.hsa ? ' active' : '') + '" id="hsa-no-'  + id + '" onclick="setHSA(' + id + ', false)">No</button>' +
+              '</div>' +
+            '</div>' +
+
+            '<div class="plan-section-label">Copays &amp; Prescriptions</div>' +
+            '<div class="field"><div class="field-label">Primary Care Copay</div><div class="input-row"><span class="prefix">$</span><input type="number" id="pcopay-pcp-' + id + '" value="' + (d.copayPCP || 30) + '" min="0" step="5"></div></div>' +
+            '<div class="field"><div class="field-label">Specialist Copay</div><div class="input-row"><span class="prefix">$</span><input type="number" id="pcopay-spec-' + id + '" value="' + (d.copaySpec || 60) + '" min="0" step="5"></div></div>' +
+            '<div class="field"><div class="field-label">Generic Rx Copay</div><div class="input-row"><span class="prefix">$</span><input type="number" id="prx-gen-' + id + '" value="' + (d.rxGen || 10) + '" min="0" step="5"></div></div>' +
+            '<div class="field"><div class="field-label">Brand Rx Copay</div><div class="input-row"><span class="prefix">$</span><input type="number" id="prx-brand-' + id + '" value="' + (d.rxBrand || 40) + '" min="0" step="5"></div></div>' +
+            '<div class="field"><div class="field-label">Specialty Rx Copay</div><div class="input-row"><span class="prefix">$</span><input type="number" id="prx-spec-' + id + '" value="' + (d.rxSpec || 100) + '" min="0" step="10"></div></div>' +
+
+          '</div>' + // /plan-grid
+
+          '<div class="plan-total-row">' +
+            '<div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em">Est. Total Annual Cost</div>' +
+            '<div class="plan-total-scenarios">' +
+              '<div class="scenario-item"><div class="scenario-label">Low Use</div><div class="scenario-value" id="sc-low-' + id + '">—</div></div>' +
+              '<div class="scenario-item"><div class="scenario-label">Medium Use</div><div class="scenario-value" id="sc-med-' + id + '">—</div></div>' +
+              '<div class="scenario-item"><div class="scenario-label">High Use</div><div class="scenario-value" id="sc-high-' + id + '">—</div></div>' +
+            '</div>' +
+          '</div>' +
+
+        '</div>' + // /plan-card-body
+      '</div>';   // /plan-card
+
+    document.getElementById('plans-container').insertAdjacentHTML('beforeend', html);
+
+    // wire all inputs in this plan
+    var inputIds = [
+      'prem-','pempl-','phsaempl-','pded-ind-','pded-fam-','pcoins-',
+      'pmoop-ind-','pmoop-fam-','pcopay-pcp-','pcopay-spec-',
+      'prx-gen-','prx-brand-','prx-spec-'
+    ];
+    for (var i = 0; i < inputIds.length; i++) {
+      (function(pfx) {
+        var el = document.getElementById(pfx + id);
+        if (el) el.addEventListener('input', function() { render(); });
+      })(inputIds[i]);
+    }
+    var nameEl = document.getElementById('pname-' + id);
+    if (nameEl) nameEl.addEventListener('input', function() { render(); });
+
+    // default HSA state
+    plans[plans.indexOf(id)] = id;
+    document.getElementById('plan-card-' + id)._hsaEligible = d.hsa || false;
+
+    render();
+  }
+
+  function setHSA(id, val) {
+    var card = document.getElementById('plan-card-' + id);
+    if (card) card._hsaEligible = val;
+    document.getElementById('hsa-yes-' + id).className = 'hsa-btn' + (val  ? ' active' : '');
+    document.getElementById('hsa-no-'  + id).className = 'hsa-btn' + (!val ? ' active' : '');
+    render();
+  }
+
+  function removePlan(id) {
+    var idx = plans.indexOf(id);
+    if (idx > -1) plans.splice(idx, 1);
+    var card = document.getElementById('plan-card-' + id);
+    if (card) card.parentNode.removeChild(card);
+    render();
+  }
+
+  // ── Read plan data ─────────────────────────────────────────────────────────
+  function getNum(id) { var el = document.getElementById(id); if (!el) return 0; var n = parseFloat(el.value); return isNaN(n) ? 0 : n; }
+  function getPlanData(id) {
+    var card = document.getElementById('plan-card-' + id);
+    var nameEl = document.getElementById('pname-' + id);
+    return {
+      id:        id,
+      name:      nameEl ? nameEl.value || ('Plan ' + id) : 'Plan ' + id,
+      color:     PLAN_COLORS[(id - 1) % PLAN_COLORS.length],
+      prem:      getNum('prem-' + id),
+      empl:      getNum('pempl-' + id),
+      hsaEmpl:   getNum('phsaempl-' + id),
+      dedInd:    getNum('pded-ind-' + id),
+      dedFam:    getNum('pded-fam-' + id),
+      coins:     getNum('pcoins-' + id) / 100,
+      moopInd:   getNum('pmoop-ind-' + id),
+      moopFam:   getNum('pmoop-fam-' + id),
+      copayPCP:  getNum('pcopay-pcp-' + id),
+      copaySpec: getNum('pcopay-spec-' + id),
+      rxGen:     getNum('prx-gen-' + id),
+      rxBrand:   getNum('prx-brand-' + id),
+      rxSpec:    getNum('prx-spec-' + id),
+      hsa:       card ? (card._hsaEligible || false) : false
+    };
+  }
+
+  // ── Calculate plan cost for a scenario ────────────────────────────────────
+  // utilMult: 0=low, 1=medium, 2=high
+  function calcPlanCost(p, utilMult) {
+    var medical = parseFloat(document.getElementById('sit-medical').value) || 0;
+    var rx      = parseFloat(document.getElementById('sit-rx').value) || 0;
+    var visits  = parseFloat(document.getElementById('sit-visits').value) || 0;
+    var bracket = parseFloat(document.getElementById('sel-bracket').value) || 0.22;
+
+    // scale by utilization scenario
+    var utilScale = [0.5, 1.0, 1.8];
+    var scale = utilScale[utilMult];
+
+    // apply major expense bump for high scenario
+    var majorBump = (majorExp === 'yes' && utilMult === 2) ? 5000 : 0;
+
+    var isFam = (coverage === 'family');
+    var ded   = isFam ? p.dedFam  : p.dedInd;
+    var moop  = isFam ? p.moopFam : p.moopInd;
+
+    // annual premium cost to employee
+    var annualPrem = (p.prem - p.empl) * 12;
+
+    // estimate total medical spend
+    var estMedical = medical * scale + majorBump;
+    var estRx      = rx * scale;
+    var visitCost  = visits * scale * (p.copayPCP * 0.7 + p.copaySpec * 0.3);
+    var totalSpend = estMedical + estRx + visitCost;
+
+    // out-of-pocket model
+    var oop = 0;
+    if (totalSpend <= ded) {
+      oop = totalSpend; // pay full until deductible
+    } else {
+      oop = ded + (totalSpend - ded) * p.coins; // deductible + coinsurance
+    }
+    if (moop > 0) oop = Math.min(oop, moop); // cap at MOOP
+
+    // HSA tax savings on employee HSA contributions (assume they contribute up to ded, capped at IRS limits)
+    var hsaTaxSavings = 0;
+    if (p.hsa) {
+      var hsaContrib = isFam ? Math.min(ded, 8300) : Math.min(ded, 4150); // 2024 IRS limits approx
+      hsaTaxSavings = hsaContrib * bracket;
+    }
+
+    // employer HSA contribution reduces net cost
+    var netHsaEmpl = p.hsaEmpl;
+
+    var total = annualPrem + oop - hsaTaxSavings - netHsaEmpl;
+
+    return {
+      annualPrem:    annualPrem,
+      oop:           oop,
+      hsaTaxSavings: hsaTaxSavings,
+      hsaEmpl:       netHsaEmpl,
+      total:         total
+    };
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  function render() {
+    var activePlans = plans.filter(function(id) { return document.getElementById('plan-card-' + id); });
+
+    // show/hide sections
+    var hasEnough = activePlans.length >= 2;
+    document.getElementById('notice-plans').className = hasEnough ? 'notice' : 'notice visible';
+    document.getElementById('rec-card').style.display      = hasEnough ? '' : 'none';
+    document.getElementById('comp-section').style.display  = hasEnough ? '' : 'none';
+    document.getElementById('chart-section').style.display = hasEnough ? '' : 'none';
+
+    // util index for "primary" scenario
+    var utilIdx = utilLevel === 'low' ? 0 : utilLevel === 'medium' ? 1 : 2;
+
+    // compute costs for all plans
+    var planData = [];
+    for (var i = 0; i < activePlans.length; i++) {
+      var p = getPlanData(activePlans[i]);
+      var low  = calcPlanCost(p, 0);
+      var med  = calcPlanCost(p, 1);
+      var high = calcPlanCost(p, 2);
+      var primary = utilIdx === 0 ? low : utilIdx === 1 ? med : high;
+      planData.push({ p: p, low: low, med: med, high: high, primary: primary });
+    }
+
+    // update per-plan scenario totals
+    for (var i = 0; i < planData.length; i++) {
+      var pd = planData[i];
+      var lowEl  = document.getElementById('sc-low-'  + pd.p.id);
+      var medEl  = document.getElementById('sc-med-'  + pd.p.id);
+      var highEl = document.getElementById('sc-high-' + pd.p.id);
+      if (lowEl)  lowEl.textContent  = fmt(pd.low.total);
+      if (medEl)  medEl.textContent  = fmt(pd.med.total);
+      if (highEl) highEl.textContent = fmt(pd.high.total);
+    }
+
+    if (!hasEnough) return;
+
+    // find best plan (lowest total for primary scenario)
+    var bestIdx = 0;
+    for (var i = 1; i < planData.length; i++) {
+      if (planData[i].primary.total < planData[bestIdx].primary.total) bestIdx = i;
+    }
+
+    // winner badges
+    for (var i = 0; i < planData.length; i++) {
+      var badge = document.getElementById('badge-' + planData[i].p.id);
+      var card  = document.getElementById('plan-card-' + planData[i].p.id);
+      if (badge) badge.className = i === bestIdx ? 'winner-badge visible' : 'winner-badge';
+      if (card)  { if (i === bestIdx) card.classList.add('winner'); else card.classList.remove('winner'); }
+    }
+
+    // highlight best scenario values
+    for (var i = 0; i < planData.length; i++) {
+      var pd = planData[i];
+      var els = [
+        document.getElementById('sc-low-'  + pd.p.id),
+        document.getElementById('sc-med-'  + pd.p.id),
+        document.getElementById('sc-high-' + pd.p.id)
+      ];
+      var vals = [pd.low.total, pd.med.total, pd.high.total];
+      var bestTotals = [
+        Math.min.apply(null, planData.map(function(x) { return x.low.total;  })),
+        Math.min.apply(null, planData.map(function(x) { return x.med.total;  })),
+        Math.min.apply(null, planData.map(function(x) { return x.high.total; }))
+      ];
+      for (var j = 0; j < 3; j++) {
+        if (els[j]) els[j].className = vals[j] === bestTotals[j] ? 'scenario-value best' : 'scenario-value';
+      }
+    }
+
+    // ── Recommendation ────────────────────────────────────────────────────────
+    var best   = planData[bestIdx];
+    var second = planData.reduce(function(s, pd, idx) { return (idx !== bestIdx && (s === null || pd.primary.total < s.primary.total)) ? pd : s; }, null);
+
+    document.getElementById('rec-name').textContent    = best.p.name;
+    document.getElementById('rec-premium').textContent = fmt(best.primary.annualPrem) + '/yr';
+    document.getElementById('rec-oop').textContent     = fmt(best.primary.oop);
+    document.getElementById('rec-hsa').textContent     = best.p.hsa ? fmt(best.primary.hsaTaxSavings) + ' saved' : 'Not eligible';
+    document.getElementById('rec-total').textContent   = fmt(best.primary.total) + '/yr';
+
+    // build explanation
+    var savings = second ? (second.primary.total - best.primary.total) : 0;
+    var reason  = '<strong>' + best.p.name + '</strong> is the best value for your <strong>' + utilLevel + ' utilization</strong> scenario';
+    if (savings > 0) reason += ', saving you approximately <strong>' + fmt(savings) + '/year</strong> compared to the next best option';
+    reason += '.';
+    if (best.p.hsa) reason += ' As an HSA-eligible plan, you can contribute pre-tax dollars — worth roughly <strong>' + fmt(best.primary.hsaTaxSavings) + ' in tax savings</strong> at your ' + (parseFloat(document.getElementById('sel-bracket').value) * 100).toFixed(0) + '% bracket.';
+    if (best.primary.annualPrem < (second ? second.primary.annualPrem : 0)) reason += ' It also has a <strong>lower annual premium</strong> than the alternatives.';
+    if (coverage === 'family' && best.p.dedFam < (second ? second.p.dedFam : Infinity)) reason += ' The <strong>family deductible</strong> is lower, which matters with multiple family members.';
+    if (majorExp === 'yes') reason += ' Given your planned major expense, pay close attention to the <strong>max out-of-pocket</strong> — that is your worst-case cost ceiling.';
+    reason += ' Always verify these estimates with your HR department or benefits administrator.';
+    document.getElementById('rec-reason').innerHTML = reason;
+
+    // ── Comparison table ──────────────────────────────────────────────────────
+    var thead = '<thead><tr><th>Item</th>';
+    for (var i = 0; i < planData.length; i++) thead += '<th>' + planData[i].p.name + '</th>';
+    thead += '</tr></thead>';
+
+    var rows = [
+      ['Monthly Premium (Employee)', function(pd) { return fmt(pd.p.prem - pd.p.empl); }],
+      ['Annual Premium (Employee)',  function(pd) { return fmt((pd.p.prem - pd.p.empl) * 12); }],
+      ['Deductible (' + coverage + ')', function(pd) { return fmt(coverage === 'family' ? pd.p.dedFam : pd.p.dedInd); }],
+      ['Max Out-of-Pocket (' + coverage + ')', function(pd) { return fmt(coverage === 'family' ? pd.p.moopFam : pd.p.moopInd); }],
+      ['Coinsurance',               function(pd) { return (pd.p.coins * 100).toFixed(0) + '%'; }],
+      ['PCP Copay',                 function(pd) { return fmt(pd.p.copayPCP); }],
+      ['Specialist Copay',          function(pd) { return fmt(pd.p.copaySpec); }],
+      ['Generic Rx',                function(pd) { return fmt(pd.p.rxGen); }],
+      ['HSA Eligible',              function(pd) { return pd.p.hsa ? '✓ Yes' : 'No'; }],
+      ['Est. OOP (' + utilLevel + ' use)', function(pd, idx) { return fmt(pd.primary.oop); }, true],
+      ['HSA Tax Savings',           function(pd) { return pd.p.hsa ? fmt(pd.primary.hsaTaxSavings) : '—'; }]
+    ];
+
+    var totalRowData = planData.map(function(pd) { return pd.primary.total; });
+    var minTotal = Math.min.apply(null, totalRowData);
+
+    var tbody = '<tbody>';
+    for (var r = 0; r < rows.length; r++) {
+      tbody += '<tr>';
+      tbody += '<td>' + rows[r][0] + '</td>';
+      for (var i = 0; i < planData.length; i++) {
+        tbody += '<td>' + rows[r][1](planData[i], i) + '</td>';
+      }
+      tbody += '</tr>';
+    }
+    // total row
+    tbody += '<tr class="total-row"><td>Est. Total Annual Cost (' + utilLevel + ' use)</td>';
+    for (var i = 0; i < planData.length; i++) {
+      var isBest = Math.round(planData[i].primary.total) === Math.round(minTotal);
+      tbody += '<td' + (isBest ? ' class="best"' : '') + '>' + fmt(planData[i].primary.total) + '</td>';
+    }
+    tbody += '</tr></tbody>';
+
+    document.getElementById('comp-table').innerHTML = thead + tbody;
+
+    // ── Chart ─────────────────────────────────────────────────────────────────
+    var datasets = [];
+    var legendHtml = '';
+    for (var i = 0; i < planData.length; i++) {
+      var pd = planData[i];
+      datasets.push({
+        label: pd.p.name,
+        data: [pd.low.total, pd.med.total, pd.high.total],
+        backgroundColor: pd.p.color,
+        borderRadius: 4,
+        borderSkipped: false
+      });
+      legendHtml += '<div class="legend-item"><div class="legend-dot" style="background:' + pd.p.color + '"></div>' + pd.p.name + '</div>';
+    }
+    chart.data.datasets = datasets;
+    chart.update();
+    document.getElementById('chart-legend').innerHTML = legendHtml;
+  }
+
+  // ── Situation toggles ──────────────────────────────────────────────────────
+  function wireToggle(groupId, callback) {
+    var btns = document.getElementById(groupId).querySelectorAll('.toggle-btn');
+    for (var i = 0; i < btns.length; i++) {
+      (function(btn) {
+        btn.addEventListener('click', function() {
+          var siblings = document.getElementById(groupId).querySelectorAll('.toggle-btn');
+          for (var j = 0; j < siblings.length; j++) siblings[j].classList.remove('active');
+          btn.classList.add('active');
+          callback(btn.getAttribute('data-val'));
+        });
+      })(btns[i]);
+    }
+  }
+
+  wireToggle('toggle-coverage', function(v) { coverage  = v; render(); });
+  wireToggle('toggle-util',     function(v) { utilLevel = v; render(); });
+  wireToggle('toggle-major',    function(v) { majorExp  = v; render(); });
+
+  document.getElementById('sel-bracket').addEventListener('change', function() { render(); });
+  document.getElementById('sit-medical').addEventListener('input',  function() { render(); });
+  document.getElementById('sit-rx').addEventListener('input',       function() { render(); });
+  document.getElementById('sit-visits').addEventListener('input',   function() { render(); });
+
+  document.getElementById('btn-add-plan').addEventListener('click', function() { addPlan({}); });
+
+  // ── Seed two default plans ─────────────────────────────────────────────────
+  addPlan({ name: 'Plan A (HDHP)', prem: 280, empl: 150, hsaempl: 500, dedInd: 2800, dedFam: 5600, coins: 20, moopInd: 5000, moopFam: 10000, copayPCP: 0, copaySpec: 0, rxGen: 15, rxBrand: 40, rxSpec: 100, hsa: true });
+  addPlan({ name: 'Plan B (PPO)',  prem: 480, empl: 150, hsaempl: 0,   dedInd: 500,  dedFam: 1000, coins: 20, moopInd: 3000, moopFam: 6000,  copayPCP: 30, copaySpec: 60, rxGen: 10, rxBrand: 35, rxSpec: 80,  hsa: false });
+
+</script>
+</body>
+</html>

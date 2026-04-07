@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Envelope Reconciliation Tool</title>
+<style>
+  :root {
+    --brand: #5a9470;
+    --brand-dark: #3d6e52;
+    --brand-faint: #f0f7f3;
+    --brand-faint2: #e1efe7;
+    --text: #1a2e22;
+    --text-muted: #6b8a76;
+    --border: #cde2d6;
+    --white: #ffffff;
+    --shadow: 0 2px 14px rgba(90,148,112,0.09);
+    --warn-bg: #fff8f0;
+    --warn-border: #f0c090;
+    --warn-text: #7a4010;
+    --red-bg: #fff0f0;
+    --red-border: #f0b0b0;
+    --red-text: #8a1010;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { overflow-x: hidden; width: 100%; }
+  body { font-family: Inter, sans-serif; background: var(--brand-faint); color: var(--text); padding: 20px 16px 36px; }
+
+  .page-header { margin-bottom: 18px; }
+  .page-header h1 { font-size: 1.5rem; font-weight: 700; color: var(--brand-dark); line-height: 1.2; margin-bottom: 3px; }
+  .page-header h1 em { font-style: italic; color: var(--brand); }
+  .page-header p { font-size: 0.85rem; color: var(--text-muted); }
+
+  /* ── Accounts card ── */
+  .card { background: var(--white); border-radius: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 16px; padding: 22px; }
+  .card-title { font-size: 0.85rem; font-weight: 700; color: var(--brand-dark); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+  .card-subtitle { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--brand-faint2); }
+
+  .accounts-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 20px; }
+
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .input-row { display: flex; align-items: center; gap: 6px; }
+  .prefix { font-size: 0.88rem; font-weight: 600; color: var(--brand); min-width: 11px; }
+
+  input[type="number"] {
+    width: 100%; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-family: Inter, sans-serif; font-size: 0.85rem; font-weight: 500;
+    color: var(--text); background: var(--brand-faint); outline: none;
+    transition: border-color 0.18s, box-shadow 0.18s; -moz-appearance: textfield;
+  }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  input[type="number"]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(90,148,112,0.13); background: #fff; }
+
+  input[type="text"] {
+    width: 100%; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-family: Inter, sans-serif; font-size: 0.82rem; font-weight: 500;
+    color: var(--text); background: var(--brand-faint); outline: none;
+  }
+  input[type="text"]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(90,148,112,0.13); background: #fff; }
+
+  select {
+    width: 100%; padding: 6px 8px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-family: Inter, sans-serif; font-size: 0.78rem; font-weight: 500;
+    color: var(--text); background: var(--brand-faint); outline: none; cursor: pointer;
+  }
+  select:focus { border-color: var(--brand); }
+
+  /* ── Reconciliation results card ── */
+  .recon-card {
+    background: var(--white); border-radius: 16px; box-shadow: var(--shadow);
+    border: 1px solid var(--border); margin-bottom: 16px;
+    display: grid; grid-template-columns: repeat(4, 1fr);
+  }
+  .recon-stat {
+    padding: 18px 16px; border-right: 1px solid var(--brand-faint2);
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .recon-stat:last-child { border-right: none; }
+  .recon-stat-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); margin-bottom: 4px; }
+  .recon-stat-value { font-weight: 700; color: var(--brand-dark); line-height: 1; margin: 0 !important; padding: 0 !important; }
+  .recon-stat-value.surplus { color: var(--brand); }
+  .recon-stat-value.deficit { color: #8a1010; }
+  .recon-stat-sub { font-size: 0.67rem; color: var(--text-muted); margin-top: 4px; }
+
+  /* reconciliation verdict */
+  .verdict {
+    display: none; margin-bottom: 16px; padding: 14px 18px;
+    border-radius: 12px; font-size: 0.82rem; line-height: 1.6;
+  }
+  .verdict.surplus { background: var(--brand-faint2); border: 1px solid var(--border); color: var(--brand-dark); display: block; }
+  .verdict.deficit { background: var(--red-bg); border: 1px solid var(--red-border); color: var(--red-text); display: block; }
+  .verdict.balanced { background: var(--brand-faint2); border: 1px solid var(--brand); color: var(--brand-dark); display: block; }
+  .verdict strong { font-weight: 700; }
+
+  /* ── Category cards ── */
+  .cat-card {
+    background: var(--white); border-radius: 16px; box-shadow: var(--shadow);
+    border: 1px solid var(--border); margin-bottom: 12px; overflow: hidden;
+  }
+  .cat-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; cursor: pointer; user-select: none;
+    border-bottom: 1px solid var(--brand-faint2);
+  }
+  .cat-header:hover { background: var(--brand-faint); }
+  .cat-header-left { display: flex; align-items: center; gap: 12px; }
+  .cat-icon { font-size: 1.1rem; }
+  .cat-title { font-size: 0.88rem; font-weight: 700; color: var(--brand-dark); text-transform: uppercase; letter-spacing: 0.04em; }
+  .cat-desc { font-size: 0.72rem; color: var(--text-muted); margin-top: 1px; }
+  .cat-header-right { display: flex; align-items: center; gap: 12px; }
+  .cat-total { font-size: 0.82rem; font-weight: 700; color: var(--brand-dark); }
+  .cat-chevron { font-size: 0.75rem; color: var(--text-muted); transition: transform 0.2s; }
+  .cat-card.collapsed .cat-chevron { transform: rotate(-90deg); }
+  .cat-body { padding: 16px 20px; }
+  .cat-card.collapsed .cat-body { display: none; }
+
+  /* ── Envelope rows ── */
+  .env-table { width: 100%; border-collapse: collapse; font-size: 0.79rem; margin-bottom: 10px; }
+  .env-table thead th {
+    padding: 6px 8px; text-align: left; font-size: 0.67rem; font-weight: 700;
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--brand-faint2); white-space: nowrap;
+  }
+  .env-table thead th.right { text-align: right; }
+  .env-table thead th.center { text-align: center; }
+
+  .env-row td { padding: 6px 8px; vertical-align: middle; border-bottom: 1px solid var(--brand-faint2); }
+  .env-row:last-child td { border-bottom: none; }
+
+  /* status indicator */
+  .env-status { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+  .status-green  { background: var(--brand); }
+  .status-yellow { background: #e8a84a; }
+  .status-red    { background: #d05050; }
+  .status-grey   { background: #b0c0b8; }
+
+  /* progress bar */
+  .env-bar-wrap { height: 5px; background: var(--brand-faint2); border-radius: 99px; overflow: hidden; min-width: 60px; }
+  .env-bar-fill { height: 100%; border-radius: 99px; transition: width 0.3s; }
+
+  .env-target-cell { text-align: right; font-weight: 600; color: var(--brand-dark); }
+  .env-saved-cell  { text-align: right; }
+  .env-pct-cell    { text-align: right; font-size: 0.72rem; font-weight: 600; }
+  .env-gap-cell    { text-align: right; font-size: 0.72rem; }
+  .gap-over  { color: var(--brand); font-weight: 600; }
+  .gap-under { color: #b05a3a; font-weight: 600; }
+
+  /* paid toggle */
+  .paid-btn {
+    padding: 3px 8px; border-radius: 6px; font-family: Inter, sans-serif;
+    font-size: 0.68rem; font-weight: 600; cursor: pointer; border: 1px solid var(--border);
+    background: var(--brand-faint); color: var(--text-muted); white-space: nowrap;
+  }
+  .paid-btn.paid { background: var(--brand-faint2); border-color: var(--brand); color: var(--brand-dark); }
+
+  .btn-del-row {
+    padding: 3px 7px; border: none; background: transparent;
+    font-size: 0.75rem; color: #c08080; cursor: pointer; border-radius: 4px;
+  }
+  .btn-del-row:hover { background: #fff0f0; }
+
+  .btn-add-row {
+    padding: 6px 14px; border: 1.5px dashed var(--border); border-radius: 8px;
+    background: transparent; font-family: Inter, sans-serif;
+    font-size: 0.75rem; font-weight: 600; color: var(--text-muted);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn-add-row:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-faint); }
+
+  /* grow savings target fields */
+  .grow-extra { display: none; }
+  .grow-extra.visible { display: table-cell; }
+
+  /* ── Chart ── */
+  .full-card { background: var(--white); border-radius: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 16px; padding: 20px; }
+  .full-card:last-child { margin-bottom: 0; }
+  .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .chart-header h2 { font-size: 0.9rem; font-weight: 700; color: var(--brand-dark); text-transform: uppercase; letter-spacing: 0.04em; }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.72rem; color: var(--text-muted); font-weight: 500; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+  .chart-wrap { position: relative; height: 260px; width: 100%; }
+
+  /* date display */
+  .today-badge { display: inline-block; padding: 3px 10px; background: var(--brand-faint2); border: 1px solid var(--border); border-radius: 20px; font-size: 0.72rem; font-weight: 600; color: var(--brand-dark); margin-bottom: 14px; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Envelope Reconciliation Tool</h1>
+  <p>See where your money should be right now — and whether your accounts match your envelopes.</p>
+</div>
+
+<!-- ── Accounts card ── -->
+<div class="card">
+  <div class="card-title">Account Balances</div>
+  <div class="card-subtitle">Enter your current available balances. The tool will compare these against what your envelopes require today.</div>
+  <div class="accounts-grid">
+    <div class="field">
+      <div class="field-label">Checking Account</div>
+      <div class="input-row"><span class="prefix">$</span><input type="number" id="acc-checking" value="0" min="0" step="100"></div>
+    </div>
+    <div class="field">
+      <div class="field-label">Savings Account</div>
+      <div class="input-row"><span class="prefix">$</span><input type="number" id="acc-savings" value="0" min="0" step="100"></div>
+    </div>
+    <div class="field">
+      <div class="field-label">Other Account</div>
+      <div class="input-row"><span class="prefix">$</span><input type="number" id="acc-other" value="0" min="0" step="100"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Reconciliation summary ── -->
+<div class="recon-card">
+  <div class="recon-stat">
+    <div class="recon-stat-label">Total Account Balance</div>
+    <h2 class="recon-stat-value" id="st-accounts" style="margin:0;padding:0">$0</h2>
+    <div class="recon-stat-sub">across all accounts</div>
+  </div>
+  <div class="recon-stat">
+    <div class="recon-stat-label">Total Envelope Target</div>
+    <h2 class="recon-stat-value" id="st-envelopes" style="margin:0;padding:0">$0</h2>
+    <div class="recon-stat-sub">what should be set aside today</div>
+  </div>
+  <div class="recon-stat">
+    <div class="recon-stat-label">Difference</div>
+    <h2 class="recon-stat-value" id="st-diff" style="margin:0;padding:0">$0</h2>
+    <div class="recon-stat-sub" id="st-diff-sub">surplus or deficit</div>
+  </div>
+  <div class="recon-stat">
+    <div class="recon-stat-label">Envelopes Funded</div>
+    <h2 class="recon-stat-value" id="st-funded" style="margin:0;padding:0">—</h2>
+    <div class="recon-stat-sub">fully or over funded</div>
+  </div>
+</div>
+
+<!-- ── Verdict ── -->
+<div class="verdict" id="verdict"></div>
+
+<!-- ── Today badge ── -->
+<div class="today-badge" id="today-badge"></div>
+
+<!-- ── LIVE ── -->
+<div class="cat-card" id="cat-live">
+  <div class="cat-header" onclick="toggleCat('live')">
+    <div class="cat-header-left">
+      <div class="cat-icon">🏠</div>
+      <div>
+        <div class="cat-title">Live</div>
+        <div class="cat-desc">Everyday living — groceries, utilities, subscriptions, home, transport</div>
+      </div>
+    </div>
+    <div class="cat-header-right">
+      <div class="cat-total" id="cattotal-live">$0</div>
+      <div class="cat-chevron">▼</div>
+    </div>
+  </div>
+  <div class="cat-body">
+    <table class="env-table">
+      <thead><tr>
+        <th style="width:22px"></th>
+        <th>Envelope Name</th>
+        <th class="right">Annual Amount</th>
+        <th>Frequency</th>
+        <th>Next Due</th>
+        <th class="right">Target Today</th>
+        <th class="right">Currently Saved</th>
+        <th style="min-width:80px">Funded</th>
+        <th class="right">Gap</th>
+        <th class="center">Paid?</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="rows-live"></tbody>
+    </table>
+    <button class="btn-add-row" onclick="addRow('live')">+ Add Envelope</button>
+  </div>
+</div>
+
+<!-- ── GIVE ── -->
+<div class="cat-card" id="cat-give">
+  <div class="cat-header" onclick="toggleCat('give')">
+    <div class="cat-header-left">
+      <div class="cat-icon">🤲</div>
+      <div>
+        <div class="cat-title">Give</div>
+        <div class="cat-desc">Charitable giving, tithing, gifts, donations</div>
+      </div>
+    </div>
+    <div class="cat-header-right">
+      <div class="cat-total" id="cattotal-give">$0</div>
+      <div class="cat-chevron">▼</div>
+    </div>
+  </div>
+  <div class="cat-body">
+    <table class="env-table">
+      <thead><tr>
+        <th style="width:22px"></th>
+        <th>Envelope Name</th>
+        <th class="right">Annual Amount</th>
+        <th>Frequency</th>
+        <th>Next Due</th>
+        <th class="right">Target Today</th>
+        <th class="right">Currently Saved</th>
+        <th style="min-width:80px">Funded</th>
+        <th class="right">Gap</th>
+        <th class="center">Paid?</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="rows-give"></tbody>
+    </table>
+    <button class="btn-add-row" onclick="addRow('give')">+ Add Envelope</button>
+  </div>
+</div>
+
+<!-- ── OWE ── -->
+<div class="cat-card" id="cat-owe">
+  <div class="cat-header" onclick="toggleCat('owe')">
+    <div class="cat-header-left">
+      <div class="cat-icon">📋</div>
+      <div>
+        <div class="cat-title">Owe</div>
+        <div class="cat-desc">Debt payments, taxes, insurance, HOA, registrations</div>
+      </div>
+    </div>
+    <div class="cat-header-right">
+      <div class="cat-total" id="cattotal-owe">$0</div>
+      <div class="cat-chevron">▼</div>
+    </div>
+  </div>
+  <div class="cat-body">
+    <table class="env-table">
+      <thead><tr>
+        <th style="width:22px"></th>
+        <th>Envelope Name</th>
+        <th class="right">Annual Amount</th>
+        <th>Frequency</th>
+        <th>Next Due</th>
+        <th class="right">Target Today</th>
+        <th class="right">Currently Saved</th>
+        <th style="min-width:80px">Funded</th>
+        <th class="right">Gap</th>
+        <th class="center">Paid?</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="rows-owe"></tbody>
+    </table>
+    <button class="btn-add-row" onclick="addRow('owe')">+ Add Envelope</button>
+  </div>
+</div>
+
+<!-- ── GROW ── -->
+<div class="cat-card" id="cat-grow">
+  <div class="cat-header" onclick="toggleCat('grow')">
+    <div class="cat-header-left">
+      <div class="cat-icon">🌱</div>
+      <div>
+        <div class="cat-title">Grow</div>
+        <div class="cat-desc">Savings goals, emergency fund, vacation, investments</div>
+      </div>
+    </div>
+    <div class="cat-header-right">
+      <div class="cat-total" id="cattotal-grow">$0</div>
+      <div class="cat-chevron">▼</div>
+    </div>
+  </div>
+  <div class="cat-body">
+    <table class="env-table">
+      <thead><tr>
+        <th style="width:22px"></th>
+        <th>Envelope Name</th>
+        <th class="right">Savings Target</th>
+        <th>Target Date</th>
+        <th class="right">Monthly Needed</th>
+        <th class="right">Target Today</th>
+        <th class="right">Currently Saved</th>
+        <th style="min-width:80px">Funded</th>
+        <th class="right">Gap</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="rows-grow"></tbody>
+    </table>
+    <button class="btn-add-row" onclick="addRow('grow')">+ Add Goal</button>
+  </div>
+</div>
+
+<!-- ── Chart ── -->
+<div class="full-card">
+  <div class="chart-header">
+    <h2>Envelope Funding Status</h2>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#5a9470"></div>Funded</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e8c4a0"></div>Remaining</div>
+    </div>
+  </div>
+  <div class="chart-wrap"><canvas id="envChart"></canvas></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+  var TODAY = new Date();
+  TODAY.setHours(0,0,0,0);
+
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  // display today's date
+  document.getElementById('today-badge').textContent = 'Today: ' + MONTHS[TODAY.getMonth()] + ' ' + TODAY.getDate() + ', ' + TODAY.getFullYear();
+
+  var rowCounters = { live: 0, give: 0, owe: 0, grow: 0 };
+  var paidState   = {}; // rowKey -> bool
+
+  var fmt      = function(n) { return '$' + Math.round(Math.abs(n)).toLocaleString('en-US'); };
+  var fmtDec   = function(n) { return '$' + Math.abs(n).toFixed(2); };
+
+  // ── Frequency options ──────────────────────────────────────────────────────
+  var FREQS = [
+    { val: 'monthly',    label: 'Monthly',     perYear: 12  },
+    { val: 'quarterly',  label: 'Quarterly',   perYear: 4   },
+    { val: 'semiannual', label: 'Semi-Annual', perYear: 2   },
+    { val: 'annual',     label: 'Annual',      perYear: 1   },
+    { val: 'custom',     label: 'Custom Date', perYear: 1   }
+  ];
+
+  function freqOptions(selected) {
+    var html = '';
+    for (var i = 0; i < FREQS.length; i++) {
+      html += '<option value="' + FREQS[i].val + '"' + (FREQS[i].val === selected ? ' selected' : '') + '>' + FREQS[i].label + '</option>';
+    }
+    return html;
+  }
+
+  // ── Calculate target for today based on frequency + due date ──────────────
+  function calcTarget(annualAmt, freqVal, dueDateStr, isPaid) {
+    if (!annualAmt || annualAmt <= 0) return 0;
+    if (isPaid) return 0; // already paid this cycle — envelope resets
+
+    var perYear = 1;
+    for (var i = 0; i < FREQS.length; i++) { if (FREQS[i].val === freqVal) { perYear = FREQS[i].perYear; break; } }
+
+    var pmtAmt = annualAmt / perYear; // amount per payment
+
+    if (!dueDateStr) {
+      // no due date — assume proportional through year
+      var dayOfYear = Math.floor((TODAY - new Date(TODAY.getFullYear(), 0, 0)) / 86400000);
+      return annualAmt * (dayOfYear / 365);
+    }
+
+    var due = new Date(dueDateStr + 'T00:00:00');
+    if (isNaN(due.getTime())) return 0;
+
+    // Find the most recent past payment date and next due date
+    // Work backwards from the given due date by payment interval
+    var intervalDays = Math.round(365 / perYear);
+
+    // Find next upcoming due
+    var nextDue = new Date(due);
+    while (nextDue < TODAY) {
+      nextDue = new Date(nextDue.getTime() + intervalDays * 86400000);
+    }
+    // Last payment was one interval ago
+    var lastDue = new Date(nextDue.getTime() - intervalDays * 86400000);
+
+    // Days elapsed since last payment / total days in interval
+    var elapsed = Math.max(0, (TODAY - lastDue) / 86400000);
+    var fraction = Math.min(1, elapsed / intervalDays);
+
+    return pmtAmt * fraction;
+  }
+
+  // ── Calculate grow target for today ───────────────────────────────────────
+  function calcGrowTarget(savingsTarget, targetDateStr) {
+    if (!savingsTarget || savingsTarget <= 0) return 0;
+    if (!targetDateStr) return 0;
+    var targetDate = new Date(targetDateStr + 'T00:00:00');
+    if (isNaN(targetDate.getTime())) return 0;
+    if (targetDate <= TODAY) return savingsTarget; // past target date — full amount needed
+
+    // linear accrual from today back one year (or from a year ago)
+    var oneYearAgo = new Date(targetDate);
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    var startDate = oneYearAgo < TODAY ? oneYearAgo : new Date(TODAY.getFullYear(), 0, 1);
+
+    var totalDays   = Math.max(1, (targetDate - startDate) / 86400000);
+    var elapsedDays = Math.max(0, (TODAY - startDate) / 86400000);
+    return savingsTarget * Math.min(1, elapsedDays / totalDays);
+  }
+
+  function calcMonthlyNeeded(savingsTarget, targetDateStr) {
+    if (!savingsTarget || savingsTarget <= 0) return 0;
+    if (!targetDateStr) return 0;
+    var targetDate = new Date(targetDateStr + 'T00:00:00');
+    if (isNaN(targetDate.getTime())) return 0;
+    var monthsLeft = Math.max(1, (targetDate - TODAY) / (30.44 * 86400000));
+    return savingsTarget / monthsLeft;
+  }
+
+  // ── Toggle card ────────────────────────────────────────────────────────────
+  function toggleCat(id) {
+    var card = document.getElementById('cat-' + id);
+    if (card.classList.contains('collapsed')) card.classList.remove('collapsed');
+    else card.classList.add('collapsed');
+  }
+
+  // ── Add row ────────────────────────────────────────────────────────────────
+  function addRow(cat, defaults) {
+    rowCounters[cat]++;
+    var n = rowCounters[cat];
+    var key = cat + '-' + n;
+    paidState[key] = false;
+    var d = defaults || {};
+
+    var tbody = document.getElementById('rows-' + cat);
+    var tr = document.createElement('tr');
+    tr.className = 'env-row';
+    tr.id = 'envrow-' + key;
+
+    if (cat === 'grow') {
+      tr.innerHTML =
+        '<td><span class="env-status status-grey" id="dot-' + key + '"></span></td>' +
+        '<td><input type="text" id="ename-' + key + '" placeholder="e.g. Vacation Fund" value="' + (d.name||'') + '"></td>' +
+        '<td><div class="input-row"><span class="prefix">$</span><input type="number" id="eamt-' + key + '" value="' + (d.amt||0) + '" min="0" step="100"></div></td>' +
+        '<td><input type="text" id="edate-' + key + '" placeholder="YYYY-MM-DD" value="' + (d.date||'') + '" style="width:110px"></td>' +
+        '<td class="env-target-cell" id="emonthly-' + key + '">—</td>' +
+        '<td class="env-target-cell" id="etarget-' + key + '">—</td>' +
+        '<td><div class="input-row"><span class="prefix">$</span><input type="number" id="esaved-' + key + '" value="' + (d.saved||0) + '" min="0" step="100"></div></td>' +
+        '<td>' +
+          '<div class="env-bar-wrap"><div class="env-bar-fill" id="ebar-' + key + '" style="width:0%;background:var(--brand)"></div></div>' +
+          '<div class="env-pct-cell" id="epct-' + key + '">0%</div>' +
+        '</td>' +
+        '<td class="env-gap-cell" id="egap-' + key + '">—</td>' +
+        '<td><button class="btn-del-row" onclick="delRow(\'' + key + '\')">✕</button></td>';
+    } else {
+      tr.innerHTML =
+        '<td><span class="env-status status-grey" id="dot-' + key + '"></span></td>' +
+        '<td><input type="text" id="ename-' + key + '" placeholder="e.g. Car Insurance" value="' + (d.name||'') + '"></td>' +
+        '<td><div class="input-row"><span class="prefix">$</span><input type="number" id="eamt-' + key + '" value="' + (d.amt||0) + '" min="0" step="100"></div></td>' +
+        '<td><select id="efreq-' + key + '">' + freqOptions(d.freq||'monthly') + '</select></td>' +
+        '<td><input type="text" id="edate-' + key + '" placeholder="YYYY-MM-DD" value="' + (d.date||'') + '" style="width:110px"></td>' +
+        '<td class="env-target-cell" id="etarget-' + key + '">—</td>' +
+        '<td><div class="input-row"><span class="prefix">$</span><input type="number" id="esaved-' + key + '" value="' + (d.saved||0) + '" min="0" step="100"></div></td>' +
+        '<td>' +
+          '<div class="env-bar-wrap"><div class="env-bar-fill" id="ebar-' + key + '" style="width:0%;background:var(--brand)"></div></div>' +
+          '<div class="env-pct-cell" id="epct-' + key + '">0%</div>' +
+        '</td>' +
+        '<td class="env-gap-cell" id="egap-' + key + '">—</td>' +
+        '<td><button class="paid-btn" id="paid-' + key + '" onclick="togglePaid(\'' + key + '\')">Unpaid</button></td>' +
+        '<td><button class="btn-del-row" onclick="delRow(\'' + key + '\')">✕</button></td>';
+    }
+
+    tbody.appendChild(tr);
+
+    // wire inputs
+    var inputIds = ['ename-','eamt-','esaved-','edate-'];
+    for (var i = 0; i < inputIds.length; i++) {
+      (function(pfx) {
+        var el = document.getElementById(pfx + key);
+        if (el) el.addEventListener('input', function() { render(); });
+      })(inputIds[i]);
+    }
+    var freqEl = document.getElementById('efreq-' + key);
+    if (freqEl) freqEl.addEventListener('change', function() { render(); });
+
+    render();
+  }
+
+  function delRow(key) {
+    var el = document.getElementById('envrow-' + key);
+    if (el) { el.parentNode.removeChild(el); render(); }
+  }
+
+  function togglePaid(key) {
+    paidState[key] = !paidState[key];
+    var btn = document.getElementById('paid-' + key);
+    if (btn) {
+      btn.textContent = paidState[key] ? 'Paid ✓' : 'Unpaid';
+      btn.className   = paidState[key] ? 'paid-btn paid' : 'paid-btn';
+    }
+    render();
+  }
+
+  function getNum(id) { var el = document.getElementById(id); if (!el) return 0; var n = parseFloat(el.value); return isNaN(n) ? 0 : n; }
+  function getStr(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+
+  // ── Chart ──────────────────────────────────────────────────────────────────
+  var ctx = document.getElementById('envChart').getContext('2d');
+  var chart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: [], datasets: [
+      { label: 'Funded',    data: [], backgroundColor: '#5a9470', borderRadius: 4, borderSkipped: false, stack: 'stack' },
+      { label: 'Remaining', data: [], backgroundColor: '#e8c4a0', borderRadius: 4, borderSkipped: false, stack: 'stack' }
+    ]},
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false, animation: { duration: 320 },
+      plugins: { legend: { display: false },
+        tooltip: { backgroundColor: '#1a2e22', padding: 10, cornerRadius: 8,
+          callbacks: { label: function(c) { return ' ' + c.dataset.label + ': ' + fmt(c.raw); } }
+        }
+      },
+      scales: {
+        x: { stacked: true, grid: { color: '#f0f7f3' }, border: { display: false },
+          ticks: { color: '#6b8a76', font: { size: 10 }, callback: function(v) { return v >= 1e3 ? '$'+(v/1e3).toFixed(0)+'K' : '$'+v; } }
+        },
+        y: { stacked: true, grid: { display: false }, ticks: { color: '#6b8a76', font: { size: 10 } } }
+      }
+    }
+  });
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  function render() {
+    var checking = getNum('acc-checking');
+    var savings  = getNum('acc-savings');
+    var other    = getNum('acc-other');
+    var totalAccounts = checking + savings + other;
+
+    var CATS = ['live','give','owe','grow'];
+    var allEnvelopes = [];
+    var totalEnvelopeTarget = 0;
+    var fundedCount = 0;
+    var totalEnvCount = 0;
+
+    for (var c = 0; c < CATS.length; c++) {
+      var cat = CATS[c];
+      var tbody = document.getElementById('rows-' + cat);
+      if (!tbody) continue;
+      var rows = tbody.querySelectorAll('.env-row');
+      var catTarget = 0;
+
+      for (var r = 0; r < rows.length; r++) {
+        var key = rows[r].id.replace('envrow-','');
+        var amt   = getNum('eamt-'   + key);
+        var saved = getNum('esaved-' + key);
+        var name  = getStr('ename-'  + key) || 'Envelope';
+        var date  = getStr('edate-'  + key);
+        var isPaid = paidState[key] || false;
+
+        var target = 0;
+        if (cat === 'grow') {
+          target = calcGrowTarget(amt, date);
+          var monthly = calcMonthlyNeeded(amt, date);
+          var moEl = document.getElementById('emonthly-' + key);
+          if (moEl) moEl.textContent = monthly > 0 ? fmt(monthly) + '/mo' : '—';
+        } else {
+          var freq = getStr('efreq-' + key) || 'monthly';
+          target = calcTarget(amt, freq, date, isPaid);
+        }
+
+        // update target display
+        var tEl = document.getElementById('etarget-' + key);
+        if (tEl) tEl.textContent = target > 0 ? fmt(target) : '$0';
+
+        // progress
+        var pct = target > 0 ? Math.min(saved / target * 100, 100) : (saved > 0 ? 100 : 0);
+        var barEl = document.getElementById('ebar-' + key);
+        var pctEl = document.getElementById('epct-' + key);
+        var dotEl = document.getElementById('dot-' + key);
+        var gapEl = document.getElementById('egap-' + key);
+        var gap   = saved - target;
+
+        if (barEl) {
+          barEl.style.width = pct.toFixed(1) + '%';
+          barEl.style.background = pct >= 100 ? '#5a9470' : pct >= 70 ? '#e8a84a' : '#d05050';
+        }
+        if (pctEl) pctEl.textContent = Math.round(pct) + '%';
+        if (dotEl) {
+          dotEl.className = 'env-status ' + (pct >= 100 ? 'status-green' : pct >= 70 ? 'status-yellow' : target === 0 ? 'status-grey' : 'status-red');
+        }
+        if (gapEl) {
+          if (target === 0 && saved === 0) {
+            gapEl.textContent = '—'; gapEl.className = 'env-gap-cell';
+          } else if (gap >= 0) {
+            gapEl.textContent = '+' + fmt(gap); gapEl.className = 'env-gap-cell gap-over';
+          } else {
+            gapEl.textContent = '-' + fmt(Math.abs(gap)); gapEl.className = 'env-gap-cell gap-under';
+          }
+        }
+
+        catTarget += target;
+        totalEnvelopeTarget += target;
+        totalEnvCount++;
+        if (pct >= 100) fundedCount++;
+
+        if (target > 0 || saved > 0) {
+          allEnvelopes.push({ name: name, target: target, saved: saved, pct: pct });
+        }
+      }
+
+      // category total
+      var catTotalEl = document.getElementById('cattotal-' + cat);
+      if (catTotalEl) catTotalEl.textContent = fmt(catTarget);
+    }
+
+    // ── Summary stats ──
+    var diff = totalAccounts - totalEnvelopeTarget;
+    document.getElementById('st-accounts').textContent  = fmt(totalAccounts);
+    document.getElementById('st-envelopes').textContent = fmt(totalEnvelopeTarget);
+    document.getElementById('st-diff').textContent      = (diff >= 0 ? '+' : '-') + fmt(Math.abs(diff));
+    document.getElementById('st-funded').textContent    = totalEnvCount > 0 ? fundedCount + ' / ' + totalEnvCount : '—';
+
+    var diffEl = document.getElementById('st-diff');
+    diffEl.className = 'recon-stat-value' + (diff > 0 ? ' surplus' : diff < 0 ? ' deficit' : '');
+
+    // ── Verdict ──
+    var verdictEl = document.getElementById('verdict');
+    if (totalEnvCount === 0) {
+      verdictEl.className = 'verdict'; verdictEl.textContent = '';
+    } else if (Math.abs(diff) < 1) {
+      verdictEl.className = 'verdict balanced';
+      verdictEl.innerHTML = '✅ <strong>Perfectly balanced.</strong> Your account balances match your envelope targets exactly.';
+    } else if (diff > 0) {
+      verdictEl.className = 'verdict surplus';
+      verdictEl.innerHTML = '💚 <strong>Surplus of ' + fmt(diff) + '.</strong> Your accounts hold more than your envelopes require right now. Consider allocating this to a Grow envelope or checking whether any envelopes are underfunded.';
+    } else {
+      verdictEl.className = 'verdict deficit';
+      verdictEl.innerHTML = '🔴 <strong>Deficit of ' + fmt(Math.abs(diff)) + '.</strong> Your accounts hold less than your envelopes require right now. Some envelopes are drawing from money that isn\'t there — review underfunded envelopes (shown in red) and adjust your saved amounts or budget.';
+    }
+
+    // ── Chart ──
+    // sort by pct descending, show top 15
+    var chartEnvs = allEnvelopes.slice().sort(function(a,b) { return b.target - a.target; }).slice(0,15);
+    chart.data.labels = chartEnvs.map(function(e) { return e.name; });
+    chart.data.datasets[0].data = chartEnvs.map(function(e) { return Math.min(e.saved, e.target); });
+    chart.data.datasets[1].data = chartEnvs.map(function(e) { return Math.max(0, e.target - e.saved); });
+    chart.update();
+  }
+
+  // ── Account inputs ─────────────────────────────────────────────────────────
+  var accIds = ['acc-checking','acc-savings','acc-other'];
+  for (var a = 0; a < accIds.length; a++) {
+    (function(id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('input', function() { render(); });
+    })(accIds[a]);
+  }
+
+  // ── Seed example data ──────────────────────────────────────────────────────
+  document.getElementById('acc-checking').value = 4200;
+  document.getElementById('acc-savings').value  = 8500;
+
+  // get next month string for due dates
+  function nextMonthDate() { var d = new Date(TODAY); d.setMonth(d.getMonth()+1); return d.getFullYear()+'-'+(('0'+(d.getMonth()+1)).slice(-2))+'-01'; }
+  function nextYearDate(mo) { return TODAY.getFullYear()+1+'-'+(('0'+mo).slice(-2))+'-01'; }
+  function thisYearDate(mo,day) { return TODAY.getFullYear()+'-'+(('0'+mo).slice(-2))+'-'+(('0'+(day||1)).slice(-2)); }
+
+  addRow('live', { name:'Groceries',       amt:7200,  freq:'monthly',    date:nextMonthDate(),      saved:600  });
+  addRow('live', { name:'Electric',        amt:1800,  freq:'monthly',    date:nextMonthDate(),      saved:150  });
+  addRow('live', { name:'Internet',        amt:840,   freq:'monthly',    date:nextMonthDate(),      saved:70   });
+  addRow('live', { name:'Car Maintenance', amt:1200,  freq:'quarterly',  date:thisYearDate(9,1),    saved:200  });
+
+  addRow('give', { name:'Tithe',           amt:5200,  freq:'monthly',    date:nextMonthDate(),      saved:433  });
+  addRow('give', { name:'Christmas Gifts', amt:800,   freq:'annual',     date:thisYearDate(12,15),  saved:300  });
+
+  addRow('owe',  { name:'Car Insurance',   amt:1800,  freq:'semiannual', date:thisYearDate(9,1),    saved:450  });
+  addRow('owe',  { name:'Property Tax',    amt:3600,  freq:'annual',     date:thisYearDate(11,1),   saved:900  });
+
+  addRow('grow', { name:'Emergency Fund',  amt:10000, date:nextYearDate(6),  saved:4200 });
+  addRow('grow', { name:'Vacation',        amt:3000,  date:nextYearDate(3),  saved:800  });
+
+  render();
+</script>
+</body>
+</html>
